@@ -2,10 +2,11 @@
 #include <cstdint>
 #include <cassert>
 #include <iostream>
+#include <bitset>
 namespace sc2 {
 	Reader::Endianness Reader::endianness = Reader::Endianness::Little;
 
-	Reader::Reader(std::string d) : data(std::move(d)) {
+	Reader::Reader(const std::string& d) : data(std::move(d)) {
 		static const union {
         	uint32_t i;
         	char c[4];
@@ -15,7 +16,10 @@ namespace sc2 {
 	}
 
 	void Reader::align() {
-		bitpos = 0;
+		if(bitpos != 0) {
+			bitpos = 0;
+			bytepos++;
+		}
 	}
 
 	std::string Reader::getAlignedBytes(int len) {
@@ -27,7 +31,7 @@ namespace sc2 {
 	std::string Reader::getBytes(int len) {
 		std::string ret;
 		ret.resize(len);
-		for(int i = 0; i < len; i++) {
+		for(decltype(len) i = 0; i < len; i++) {
 			ret += (char)getByte();
 		}
 		return ret;
@@ -38,55 +42,53 @@ namespace sc2 {
 			return data[bytepos++];
 		}
 
-		// This is what is left of our byte appended with zero bits
-		int8_t start = data[bytepos] << bitpos;
-
-		// Go to next byte. The bit position stays the same because we are reading 1 byte
+		uint8_t start = ((uint8_t)data[bytepos] >> bitpos) << bitpos;
 		bytepos++;
-		int8_t rest = data[bytepos] >> (8 - bitpos);
-
+		uint8_t rest = ((uint8_t)data[bytepos] << (uint8_t)(8 - bitpos)) >> (uint8_t)(8 - bitpos);
 		return start | rest;
 	}
 
-	int64_t Reader::getBits(int bits) {
+	uint64_t Reader::getBits(int bits) {
 		assert(bits <= 64);
 
+		if(bits == 0) return 0;
 		if(bits == 8) return getByte();
 
 		if(bits < 8) {
-			int64_t current = (int8_t)(data[bytepos] << bitpos);
-			// We have enough bits in the current byte!
-			if(bits < 8 - bitpos) {
-				// We must shift right 'bitpos' bits to get to the original byte with the first bits truncated, then (8 - bitpos - bits) to truncate the end bytes we need
-				current >>= (8 - bits);
+			uint8_t current = (uint8_t)(data[bytepos]) >> bitpos;
+
+			if(bits == 8 - bitpos) {
+				bitpos = 0;
+				bytepos++;
+				return current;
+			} else if(bits < 8 - bitpos) {
+				// We have enough bits in the current byte!
+				current = (uint8_t)(current << (8 - bits)) >> (8 - bits);
+				bitpos += bits;
 				return current;
 			} else {
-				// We need to get the next byte
 				bytepos++;
-				int8_t next = data[bytepos];
-				// Set it's bit position
+				uint8_t next = data[bytepos];
 				bitpos = bits - (8 - bitpos);
-				// Keep only the bits we will need
-				next >>= 8 - bitpos;
-				// Then we shift our current value to align it correctly before ORing it
-				current >>= 8 - bits;
+				next <<= (8 - bitpos);
+				current <<= bitpos;
 				return current | next;
 			}
 		}
 
 		// If we have more than 8 bits, we will compose calls
-		int64_t composed = 0;
+		uint64_t composed = 0;
 		while(bits > 8) {
-			int8_t byte = getByte();
+			uint8_t byte = getByte();
 			// Shift the previous byte left, OR in the new byte
-			composed = (composed << 8) | byte;
+			composed = (composed << 8) | (uint8_t)byte;
 
 			bits -= 8;
 		}
 
 		if(bits > 0) {
 			// OR in the few remaining bits
-			composed = (composed << bits) | (int8_t)getBits(bits);
+			composed = (composed << bits) | (uint8_t)getBits(bits);
 		}
 
 		return composed;

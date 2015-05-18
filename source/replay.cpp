@@ -57,7 +57,9 @@ namespace sc2 {
 
 	void Replay::consumeInitData(std::string data) {
 		Reader reader(data);
+
 		auto root = InitDataSchema::execute(reader);
+		//std::cout << data << std::endl;
 		std::cout << node_str(root) << std::endl;
 		/*
 		int playerNum = reader.getByte();

@@ -17,16 +17,17 @@ namespace sc2 {
 				Little, Big
 			};
 
-			Reader(std::string d);
+			Reader(const std::string& d);
 
 			// Aligns the bit position to the byte position (sets bitpos = 0)
 			void align();
+			void alignForward();
 
 			// Aligns and gets some bytes, convenience function
 			std::string getAlignedBytes(int len);
 
 			std::string getBytes(int len);
-			int64_t getBits(int bits);
+			uint64_t getBits(int bits);
 
 			int8_t getByte();
 

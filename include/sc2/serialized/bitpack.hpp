@@ -23,7 +23,8 @@ namespace sc2 {
 		class Int {
 			public:
 				static Node execute(Reader& reader) {
-					return Node(Lb + reader.getBits(Ub));
+					assert(Ub <= 64);
+					return Node(Lb + (int64_t)reader.getBits(Ub));
 				}
 		};
 
@@ -66,7 +67,6 @@ namespace sc2 {
 				static Node execute(Reader& reader) {
 					std::vector<Node> nodes;
 					int len = Int<Lb, Ub>::execute(reader).num;
-					std::cout << "Got array length " << len << " Lb = " << Lb << ", Ub = " << Ub << std::endl;
 					for(int i = 0; i < len; i++) {
 						nodes.push_back(T::execute(reader));
 					}
@@ -78,7 +78,7 @@ namespace sc2 {
 		class Optional {
 			public:
 				static Node execute(Reader& reader) {
-					bool exists = reader.getByte() != 0;
+					bool exists = reader.getBits(1) != 0;
 					if(exists) {
 						return T::execute(reader);
 					}
@@ -92,7 +92,13 @@ namespace sc2 {
 			public:
 				static Node execute(Reader& reader) {
 					int len = Int<Lb, Ub>::execute(reader).num;
-					return Node(reader.getBits(len));
+					// Apparently BitArrays can get quite big, let's just make them read bytes into a string :)
+					assert(len > 0);
+
+					std::string ret = reader.getBytes(len / 8);
+					ret += (char)reader.getBits(len % 8);
+					std::cout << "BitArr: " << ret << " (len: " << len << " bits)" << std::endl;
+					return Node(ret);
 				}
 		};
 
@@ -101,14 +107,16 @@ namespace sc2 {
 			public:
 				static Node execute(Reader& reader) {
 					int len = Int<Lb, Ub>::execute(reader).num;
-					return Node(reader.getAlignedBytes(len));
+					auto str = reader.getAlignedBytes(len);
+					if(len > 0) std::cout << "Blobstr: " << str << "(len: " << len << ")" << std::endl;
+					return Node(str);
 				}
 		};
 
 		class Bool {
 			public:
 				static Node execute(Reader& reader) {
-					return Node(reader.getByte() != 0);
+					return Node(reader.getBits(1) != 0);
 				}
 		};
 
@@ -125,7 +133,7 @@ namespace sc2 {
 				}
 		};
 
-		// A pair is a <int, typename>
+		// Only Pairs should be passed as parameters
 		template <int Lb, int Ub, typename P, typename... Ps>
 		class Choice {
 			public:
