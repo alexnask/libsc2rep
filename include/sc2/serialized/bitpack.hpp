@@ -93,11 +93,12 @@ namespace sc2 {
 				static Node execute(Reader& reader) {
 					int len = Int<Lb, Ub>::execute(reader).num;
 					// Apparently BitArrays can get quite big, let's just make them read bytes into a string :)
-					assert(len > 0);
+					assert(len >= 0);
 
 					std::string ret = reader.getBytes(len / 8);
-					ret += (char)reader.getBits(len % 8);
-					std::cout << "BitArr: " << ret << " (len: " << len << " bits)" << std::endl;
+					if (len % 8) {
+						ret += (char)reader.getBits(len % 8);
+					}
 					return Node(ret);
 				}
 		};

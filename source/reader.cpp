@@ -29,6 +29,10 @@ namespace sc2 {
 	}
 
 	std::string Reader::getBytes(int len) {
+		assert(len >= 0);
+
+		if (len == 0) return "";
+
 		std::string ret;
 		ret.resize(len);
 		for(decltype(len) i = 0; i < len; i++) {
@@ -37,11 +41,12 @@ namespace sc2 {
 		return ret;
 	}
 
-	int8_t Reader::getByte() {
+	uint8_t Reader::getByte() {
 		if(bitpos == 0) {
 			return data[bytepos++];
 		}
 
+		//00000 | 111
 		uint8_t start = ((uint8_t)data[bytepos] >> bitpos) << bitpos;
 		bytepos++;
 		uint8_t rest = ((uint8_t)data[bytepos] << (uint8_t)(8 - bitpos)) >> (uint8_t)(8 - bitpos);
@@ -70,7 +75,7 @@ namespace sc2 {
 				bytepos++;
 				uint8_t next = data[bytepos];
 				bitpos = bits - (8 - bitpos);
-				next <<= (8 - bitpos);
+				next = (next << (8 - bitpos)) >> (8 - bitpos);
 				current <<= bitpos;
 				return current | next;
 			}

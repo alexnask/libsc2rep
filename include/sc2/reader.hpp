@@ -29,7 +29,7 @@ namespace sc2 {
 			std::string getBytes(int len);
 			uint64_t getBits(int bits);
 
-			int8_t getByte();
+			uint8_t getByte();
 
 			// Note, those do not reset alignment, call align() if you need to
 			void skip(int bytes);
