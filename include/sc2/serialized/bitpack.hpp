@@ -7,14 +7,13 @@
 
 #include <cstdint>
 #include <cassert>
-#include <iostream>
 
 namespace sc2 {
 	namespace bitpack {
 		template <typename T>
 		class Schema {
 			public:
-				static Node execute(Reader& reader) {
+				static inline auto execute(Reader& reader) -> decltype(T::execute(reader)) {
 					return T::execute(reader);
 				}
 		};
@@ -22,26 +21,28 @@ namespace sc2 {
 		template <int Lb, int Ub>
 		class Int {
 			public:
-				static Node execute(Reader& reader) {
+				static int execute(Reader& reader) {
 					assert(Ub <= 64);
-					return Node(Lb + (int64_t)reader.getBits(Ub));
+					return Lb + (int64_t)reader.getBits(Ub);
 				}
 		};
 
 		template <typename T, typename... Args>
 		class Struct {
 			public:
-				static Node execute(Reader& reader) {
-					std::vector<Node> nodes;
+				static inline auto execute(Reader& reader) -> std::tuple<decltype(T::execute(reader)), decltype(Args::execute(reader))...> {
+					using tuple_type = std::tuple<decltype(T::execute(reader)), decltype(Args::execute(reader))...>;
+					tuple_type nodes;
 
-					nodes.push_back(T::execute(reader));
-					Struct<Args...>::helper(reader, nodes);
+					std::get<0>(nodes) = T::execute(reader);
+					Struct<Args...>::template helper<1>(reader, nodes);
 					return nodes;
 				}
 
-				static inline void helper(Reader& reader, std::vector<Node>& nodes) {
-					nodes.push_back(T::execute(reader));
-					Struct<Args...>::helper(reader, nodes);
+				template <int Index, typename Tuple>
+				static inline void helper(Reader& reader, Tuple& nodes) {
+					std::get<Index>(nodes) = T::execute(reader);
+					Struct<Args...>::template helper<Index + 1>(reader, nodes);
 				}
 		};
 
@@ -49,27 +50,30 @@ namespace sc2 {
 		template <typename T>
 		class Struct<T> {
 			public:
-				static Node execute(Reader& reader) {
-					std::vector<Node> nodes;
+				static inline auto execute(Reader& reader) -> std::tuple<decltype(T::execute(reader))> {
+					std::tuple<decltype(T::execute(reader))> nodes;
 
-					nodes.push_back(T::execute(reader));
+					std::get<0>(nodes) = T::execute(reader);
 					return nodes;
 				}
 
-				static inline void helper(Reader& reader, std::vector<Node>& nodes) {
-					nodes.push_back(T::execute(reader));
+				template <int Index, typename Tuple>
+				static inline void helper(Reader& reader, Tuple& nodes) {
+					std::get<Index>(nodes) = T::execute(reader);
 				}
 		};
 
 		template <int Lb, int Ub, typename T>
 		class Array {
 			public:
-				static Node execute(Reader& reader) {
-					std::vector<Node> nodes;
-					int len = Int<Lb, Ub>::execute(reader).num;
+				static inline auto execute(Reader& reader) -> std::vector<decltype(T::execute(reader))> {
+					std::vector<decltype(T::execute(reader))> nodes;
+
+					int len = Int<Lb, Ub>::execute(reader);
 					for(int i = 0; i < len; i++) {
 						nodes.push_back(T::execute(reader));
 					}
+
 					return nodes;
 				}
 		};
@@ -77,21 +81,23 @@ namespace sc2 {
 		template <typename T>
 		class Optional {
 			public:
-				static Node execute(Reader& reader) {
+				static inline auto execute(Reader& reader) -> std::pair<decltype(T::execute(reader)), bool> {
 					bool exists = reader.getBits(1) != 0;
 					if(exists) {
-						return T::execute(reader);
+						return std::make_pair(T::execute(reader), true);
 					}
 
-					return Node();
+					std::pair<decltype(T::execute(reader)), bool> pair;
+					std::get<1>(pair) = false;
+					return pair;
 				}
 		};
 
 		template <int Lb, int Ub>
 		class BitArray {
 			public:
-				static Node execute(Reader& reader) {
-					int len = Int<Lb, Ub>::execute(reader).num;
+				static inline std::string execute(Reader& reader) {
+					int len = Int<Lb, Ub>::execute(reader);
 					// Apparently BitArrays can get quite big, let's just make them read bytes into a string :)
 					assert(len >= 0);
 
@@ -99,25 +105,23 @@ namespace sc2 {
 					if (len % 8) {
 						ret += (char)reader.getBits(len % 8);
 					}
-					return Node(ret);
+					return ret;
 				}
 		};
 
 		template <int Lb, int Ub>
 		class Blob {
 			public:
-				static Node execute(Reader& reader) {
-					int len = Int<Lb, Ub>::execute(reader).num;
-					auto str = reader.getAlignedBytes(len);
-					if(len > 0) std::cout << "Blobstr: " << str << "(len: " << len << ")" << std::endl;
-					return Node(str);
+				static inline std::string execute(Reader& reader) {
+					int len = Int<Lb, Ub>::execute(reader);
+					return reader.getAlignedBytes(len);
 				}
 		};
 
 		class Bool {
 			public:
-				static Node execute(Reader& reader) {
-					return Node(reader.getBits(1) != 0);
+				static inline bool execute(Reader& reader) {
+					return reader.getBits(1) != 0;
 				}
 		};
 
@@ -138,13 +142,13 @@ namespace sc2 {
 		template <int Lb, int Ub, typename P, typename... Ps>
 		class Choice {
 			public:
-				static Node execute(Reader& reader) {
-					int tag = Int<Lb, Ub>::execute(reader).num;
+				static inline Node execute(Reader& reader) {
+					int tag = Int<Lb, Ub>::execute(reader);
 					return helper(tag, reader);
 				}
 
 				static inline Node helper(int tag, Reader& reader) {
-					if(P::check(tag)) return P::execute(reader);
+					if(P::check(tag)) return Node(P::execute(reader));
 					return Choice<Lb, Ub, Ps...>::helper(tag, reader);
 				}
 		};
@@ -152,21 +156,21 @@ namespace sc2 {
 		template <int Lb, int Ub, typename P>
 		class Choice<Lb, Ub, P> {
 			public:
-				static Node execute(Reader& reader) {
-					int tag = Int<Lb, Ub>::execute(reader).num;
+				static inline Node execute(Reader& reader) {
+					int tag = Int<Lb, Ub>::execute(reader);
 					return helper(tag, reader);
 				}
 
 				static inline Node helper(int tag, Reader& reader) {
-					if(P::check(tag)) return P::execute(reader);
+					if(P::check(tag)) return Node(P::execute(reader));
 					throw std::runtime_error("Replay file is probably corrupted");
 				}
 		};
 
 		class FourCC {
 			public:
-				static Node execute(Reader& reader) {
-					return Node(reader.getBytes(4));
+				static inline std::string execute(Reader& reader) {
+					return reader.getBytes(4);
 				}
 		};
 	}

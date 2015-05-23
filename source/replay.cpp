@@ -4,9 +4,6 @@
 #include <libmpq/mpq.h>
 #include <cassert>
 
-#include <sc2/serialized/bitpack.hpp>
-typedef sc2::bitpack::Schema<sc2::bitpack::Struct<sc2::bitpack::Struct<sc2::bitpack::Array<0, 5, sc2::bitpack::Struct<sc2::bitpack::Blob<0, 8>, sc2::bitpack::Optional<sc2::bitpack::Blob<0, 8>>, sc2::bitpack::Optional<sc2::bitpack::Blob<40, 0>>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 8>>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 32>>, sc2::bitpack::Int<0, 32>, sc2::bitpack::Struct<sc2::bitpack::Optional<sc2::bitpack::Int<0, 8>>>, sc2::bitpack::Struct<sc2::bitpack::Optional<sc2::bitpack::Int<0, 8>>>, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Int<0, 32>, sc2::bitpack::Int<0, 2>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Blob<0, 7>>>, sc2::bitpack::Struct<sc2::bitpack::Int<0, 32>, sc2::bitpack::Blob<0, 10>, sc2::bitpack::Struct<sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Int<0, 2>, sc2::bitpack::Int<0, 2>, sc2::bitpack::Int<0, 2>, sc2::bitpack::Int<0, 64>>, sc2::bitpack::Int<0, 3>, sc2::bitpack::Int<0, 3>, sc2::bitpack::Int<0, 5>, sc2::bitpack::Int<0, 5>, sc2::bitpack::Int<0, 5>, sc2::bitpack::Int<1, 4>, sc2::bitpack::Int<0, 6>, sc2::bitpack::Int<1, 8>, sc2::bitpack::Int<0, 8>, sc2::bitpack::Int<0, 8>, sc2::bitpack::Int<0, 8>, sc2::bitpack::Int<0, 32>, sc2::bitpack::Blob<0, 11>, sc2::bitpack::Blob<0, 8>, sc2::bitpack::Int<0, 32>, sc2::bitpack::Array<0, 5, sc2::bitpack::Struct<sc2::bitpack::BitArray<0, 6>, sc2::bitpack::BitArray<0, 8>, sc2::bitpack::BitArray<0, 6>, sc2::bitpack::BitArray<0, 8>, sc2::bitpack::BitArray<0, 2>, sc2::bitpack::BitArray<0, 7>>>, sc2::bitpack::Int<0, 6>, sc2::bitpack::Int<0, 7>, sc2::bitpack::Array<0, 6, sc2::bitpack::Blob<40, 0>>, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool, sc2::bitpack::Bool>, sc2::bitpack::Struct<sc2::bitpack::Int<0, 3>, sc2::bitpack::Int<0, 5>, sc2::bitpack::Int<0, 5>, sc2::bitpack::Array<0, 5, sc2::bitpack::Struct<sc2::bitpack::Int<0, 8>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 4>>, sc2::bitpack::Int<0, 4>, sc2::bitpack::Struct<sc2::bitpack::Optional<sc2::bitpack::Int<0, 5>>>, sc2::bitpack::Struct<sc2::bitpack::Optional<sc2::bitpack::Int<0, 8>>>, sc2::bitpack::Int<0, 6>, sc2::bitpack::Int<0, 7>, sc2::bitpack::Int<0, 7>, sc2::bitpack::Int<0, 2>, sc2::bitpack::Int<0, 32>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Blob<0, 9>, sc2::bitpack::Array<0, 4, sc2::bitpack::Blob<0, 9>>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 8>>, sc2::bitpack::Array<0, 17, sc2::bitpack::Int<0, 32>>, sc2::bitpack::Blob<0, 7>, sc2::bitpack::Array<0, 9, sc2::bitpack::Int<0, 32>>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 4>>, sc2::bitpack::Blob<0, 9>>>, sc2::bitpack::Int<0, 32>, sc2::bitpack::Optional<sc2::bitpack::Int<0, 4>>, sc2::bitpack::Bool, sc2::bitpack::Int<0, 32>, sc2::bitpack::Int<0, 6>, sc2::bitpack::Int<0, 7>>>>> InitDataSchema;
-#include <sc2/formatting.hpp>
 namespace sc2 {
 	Replay::Replay(std::string replaypath) {
 		auto result = libmpq__archive_open(&handle, replaypath.data(), -1);
@@ -58,42 +55,38 @@ namespace sc2 {
 	void Replay::consumeInitData(std::string data) {
 		Reader reader(data);
 
-		auto root = InitDataSchema::execute(reader);
-		//std::cout << data << std::endl;
-		std::cout << node_str(root) << std::endl;
-		/*
-		int playerNum = reader.getByte();
-		for(int i = 0; i < playerNum; i++) {
-			// We don't do anythng with player names at this point
-			reader.getPascalString();
-			reader.skip(5);
+		auto root = std::get<0>(InitDataSchema35032::execute(reader));
+
+		for(const auto& player: std::get<0>(root)) {
+			if(!std::get<0>(player).empty()) {
+				// This is actually a player :)
+				std::cout << std::get<0>(player) << std::endl << "-----------------------" << std::endl;
+				if(std::get<1>(player).second)
+					std::cout << "Clan tag: " << std::get<1>(player).first << std::endl;
+				std::cout << "\"Observe\": " << std::get<13>(player) << std::endl;
+				std::cout << "-----------------------" << std::endl << std::endl;
+			}
 		}
 
-		// Todo: document those somewhere
-		reader.skip(322);
+		auto gameOptions = std::get<2>(std::get<1>(root));
+		lockedTeams = std::get<0>(gameOptions);
+		// TODO: is this an archon mode flag?
+		std::cout << "Advanced shared control: " << std::get<2>(gameOptions) << std::endl;
 
-		// This is the SC2 account string
-		reader.getPascalString();
+		std::cout << "Ranked: " << std::get<6>(gameOptions) << std::endl;
+		// This must be the matchmaking flag
+		std::cout << "Competitive: " << std::get<7>(gameOptions) << std::endl;
+		// Is this vs AI practise?
+		std::cout << "Practise: " << std::get<8>(gameOptions) << std::endl;
+		std::cout << "Coop: " << std::get<9>(gameOptions) << std::endl;
+		std::cout << "Observers: " << std::get<13>(gameOptions) << std::endl;
 
-		reader.skip(891);
+		std::cout << "Game speed: " << std::get<3>(std::get<1>(root)) << std::endl;
+		std::cout << "Game type: " << std::get<4>(std::get<1>(root)) << std::endl;
 
-		std::string magic = reader.getAlignedBytes(4);
-		assert(magic == "s2ma");
-
-		reader.skip(2);
-		std::string regionStr = reader.getAlignedBytes(2);
-
-		// TODO: verify and add cases, although all replays will be Unknown in beta anyway :D
-		if(regionStr == "NA") {
-			region = Region::NA;
-		} else if(regionStr == "EU") {
-			region = Region::EU;
-		} else if(regionStr == "KR") {
-			region = Region::KR;
-		} else {
-			region = Region::Unknown;
-		}
-		*/
+		std::cout << "Max users: " << std::get<5>(std::get<1>(root)) << std::endl;
+		std::cout << "Max observers: " << std::get<6>(std::get<1>(root)) << std::endl;
+		std::cout << "Max players: " << std::get<7>(std::get<1>(root)) << std::endl;
 	}
 
 	std::string Replay::getUserHeaderData() {

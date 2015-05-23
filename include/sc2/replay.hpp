@@ -97,6 +97,9 @@ namespace sc2 {
 			// Whether this game was resumed from replay
 			bool resumed;
 
+			// Whether the teams of this game are locked
+			bool lockedTeams;
+
 			// Representation of the sc2 version
 			std::string sc2Version = "";
 		private:

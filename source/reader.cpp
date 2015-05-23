@@ -1,8 +1,7 @@
 #include <sc2/reader.hpp>
 #include <cstdint>
 #include <cassert>
-#include <iostream>
-#include <bitset>
+
 namespace sc2 {
 	Reader::Endianness Reader::endianness = Reader::Endianness::Little;
 
@@ -46,7 +45,6 @@ namespace sc2 {
 			return data[bytepos++];
 		}
 
-		//00000 | 111
 		uint8_t start = ((uint8_t)data[bytepos] >> bitpos) << bitpos;
 		bytepos++;
 		uint8_t rest = ((uint8_t)data[bytepos] << (uint8_t)(8 - bitpos)) >> (uint8_t)(8 - bitpos);
