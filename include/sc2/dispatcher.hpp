@@ -19,7 +19,8 @@ namespace sc2 {
 		public:
 			static void details(std::string data, Replay& parent);
 		private:
-			static void detail_handler(Node root, Replay& parent);
+			template <typename RType>
+			static void detail_handler(const RType& root, Replay& parent);
 	};
 }
 

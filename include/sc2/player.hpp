@@ -25,8 +25,6 @@ namespace sc2 {
 				Win, Loss, Unknown
 			};
 
-			Player(Node root, int build);
-
 			std::string name;
 			Color color;
 			Race race;

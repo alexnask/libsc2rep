@@ -1,4 +1,4 @@
-OBJS = obj/formatting.o obj/replay.o obj/reader.o obj/player.o obj/dispatcher.o obj/serialized/nodes.o obj/serialized/versioned.o
+OBJS = obj/formatting.o obj/replay.o obj/reader.o obj/dispatcher.o obj/serialized/nodes.o obj/serialized/versioned.o
 HEADER_FILES = include/sc2/*.hpp
 STATLIB = lib/libsc2rep.a
 CXXFLAGS = -g -std=c++14 -Wall -static -I/usr/local/include

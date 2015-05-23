@@ -37,11 +37,11 @@ namespace sc2 {
 		Reader reader(data);
 		auto root = HeaderSchema::execute(reader);
 
-		build = root.arr[1].arr[4].num;
-		baseBuild = root.arr[1].arr[5].num;
+		build = std::get<4>(std::get<1>(root));
+		baseBuild = std::get<5>(std::get<1>(root));
 
-		sc2Version = std::to_string(root.arr[1].arr[1].num) + '.' + std::to_string(root.arr[1].arr[2].num) + '.' + std::to_string(root.arr[1].arr[3].num) + '.' + std::to_string(root.arr[1].arr[4].num);
-		frames = root.arr[3].num;
+		sc2Version = std::to_string(std::get<1>(std::get<1>(root))) + '.' + std::to_string(std::get<2>(std::get<1>(root))) + '.' + std::to_string(std::get<3>(std::get<1>(root))) + '.' + std::to_string(std::get<4>(std::get<1>(root)));
+		frames = std::get<3>(root);
 	}
 
 	void Replay::consumeDetails(std::string data) {
