@@ -18,10 +18,10 @@ namespace sc2 {
 	class Dispatcher {
 		public:
 			static void details(std::string data, Replay& parent);
-		private:
-			template <typename RType>
-			static void detail_handler(const RType& root, Replay& parent);
 	};
+
+	template <int Build, typename RType>
+	static void detail_handler(const RType& root, Replay& parent);
 }
 
 #endif//SC2_DISPATCHER__HPP
